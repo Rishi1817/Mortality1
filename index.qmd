@@ -1,0 +1,109 @@
+---
+title: "LIFETIME RISK OF MATERNAL DEATH"
+author: "Rishi Raj Choudhury"
+format: html
+execute:
+  echo: false
+  warning: false
+  message: false
+
+---
+## Lifetime risk of maternal death (probability (1 in X) that a 15-year-old girl (in the year 2020)
+```{r}
+#| label: setup
+#| include: false
+library(tidyverse)
+# Read in the datasets
+dataset1 <- read.csv("Unicef/unicef_indicator_2.csv")
+dataset2 <- read.csv("Unicef/unicef_metadata.csv")
+```
+```{r}
+# Merge the datasets based on country and year
+merged_data <- full_join(dataset1, dataset2, by = c("country", "time_period" = "year"))
+```
+### WHAT IS THE LIFETIME RISK OF MATERNAL DEATH?
+
+
+The "Lifetime risk of maternal death" is a statistical estimate that helps to quantify the risk of maternal death for a specific group of people, in this case, 15-year-old girls. It is an essential indicator of the quality of maternal healthcare in a given country or region and can be used to track progress in reducing maternal mortality rates over time.
+```{r}
+# Aggregate maternal mortality rate by country
+country_mmr <- merged_data %>%
+  group_by(country) %>%
+  summarize(avg_mmr = mean(1/obs_value, na.rm = TRUE))
+```
+```{r}
+# Plot the world map with maternal mortality rate
+world_map <- ggplot() +
+  geom_polygon(data = map_data("world"), aes(x = long, y = lat, group = group), fill = "white", color = "gray") +
+  geom_map(data = country_mmr, aes(map_id = country, fill = avg_mmr), map = map_data("world"), color = "gray") +
+  scale_fill_gradient(low = "#FEEBE2", high = "#B30000", name = "Maternal Mortality Rate") +
+  coord_equal() +
+  theme_void()
+
+# Display the world map chart
+world_map
+```
+##### The world map shows that maternal mortality rate is highest in sub-Saharan African countries, especially in countries like Chad, Sierra Leone, and Nigeria. We can also see that some countries in South Asia, such as Afghanistan and Pakistan, have high maternal mortality rates.
+
+
+```{r}
+# Sort the merged data by maternal mortality rate in descending order
+sorted_data <- merged_data %>%
+  arrange(desc(1/obs_value))
+
+# Select the top 10 countries with the highest maternal mortality rates
+top_countries <- head(sorted_data$country, 10)
+
+# Filter the merged data for the top 10 countries
+top_data <- merged_data %>%
+  filter(country %in% top_countries)
+
+# Plot the bar chart for the top 10 countries
+bar_chart <- ggplot(top_data, aes(x = country, y = obs_value, fill = country)) +
+  geom_bar(stat = "identity") +
+  labs(x = "Country", y = "Maternal Mortality Rate", title = "Top 10 Countries with Highest Maternal Mortality Rates") +
+  scale_fill_discrete(name = "Country") +
+  theme(axis.text.x = element_text(angle = 45, hjust = 1))
+
+# Display the bar chart
+bar_chart
+```
+### HOW IS IT RELATED TO THE POPULATION, GDP, GNI AND LIFE EXPECTANCY OF A COUNTRY?
+
+
+The Lifetime risk of maternal death is related to a country's population because the more women of reproductive age there are, the higher the absolute number of maternal deaths. It is also related to life expectancy, GDP, and GNI because countries with higher economic development and better healthcare systems tend to have lower maternal mortality rates and therefore lower Lifetime risk of maternal death.
+```{r}
+scatterplot <- merged_data %>%
+  filter(time_period == 2020) %>%
+  select(obs_value, `GDP.per.capita..constant.2015.US..`) %>%
+  ggplot(aes(x = `GDP.per.capita..constant.2015.US..`, y = obs_value)) +
+  geom_point(alpha = 0.7, color = "darkred") +
+  geom_smooth(method = lm, se = FALSE, color = "black") +
+  labs(title = "Maternal Mortality Rate vs GDP per Capita (2020)",
+       x = "GDP.per.capita.", y = "Maternal Mortality Rate")
+scatterplot
+```
+###### The scatterplot shows a negative relationship between maternal mortality rates and GDP per capita, indicating that countries with higher GDP per capita tend to have lower maternal mortality rates. This could be because countries with higher GDP per capita have better healthcare systems and can afford better maternal healthcare services.
+```{r}
+# Select columns for the time-series chart
+time_series_data <- merged_data %>%
+  select(country, year = time_period, pop = `Population..total`, life_exp = `Life.expectancy.at.birth..total..years.`) %>%
+  filter(!is.na(pop) & !is.na(life_exp))
+
+# Convert year to date
+time_series_data$year <- as.Date(paste0(time_series_data$year, "-01-01"))
+
+# Create the time-series chart
+time_series_chart <- ggplot(time_series_data, aes(x = year)) +
+  geom_line(aes(y = pop/1000000, color = "Population (millions)")) +
+  geom_line(aes(y = life_exp, color = "Life Expectancy (years)")) +
+  scale_color_manual(values = c("Population (millions)" = "blue", "Life Expectancy (years)" = "red")) +
+  labs(title = "Population and Life Expectancy Over Time", x = "Year", y = "") +
+  theme(legend.position = "bottom")
+
+time_series_chart
+```
+## HOW TO REDUCE IT?
+
+
+To reduce the Lifetime risk of maternal death, strategies such as improving access to maternal healthcare services, promoting family planning, and addressing social and cultural factors that increase maternal mortality rates can be implemented.
